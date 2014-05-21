@@ -329,55 +329,21 @@ static phys_addr_t get_phys_addr(struct scatterlist *sg)
 	return pa;
 }
 
-static int check_range(u32 *fl_table, unsigned int va,
-				 unsigned int len)
+/*
+ * For debugging we may want to force mappings to be 4K only
+ */
+#ifdef CONFIG_IOMMU_FORCE_4K_MAPPINGS
+static inline int is_fully_aligned(unsigned int va, phys_addr_t pa, size_t len,
+				   int align)
 {
-	unsigned int offset = 0;
-	u32 *fl_pte;
-	u32 fl_offset;
-	u32 *sl_table;
-	u32 sl_start, sl_end;
-	int i;
-
-	fl_offset = FL_OFFSET(va);	/* Upper 12 bits */
-	fl_pte = fl_table + fl_offset;	/* int pointers, 4 bytes */
-
-	while (offset < len) {
-		if (*fl_pte & FL_TYPE_TABLE) {
-			sl_start = SL_OFFSET(va);
-			sl_table =  __va(((*fl_pte) & FL_BASE_MASK));
-			sl_end = ((len - offset) / SZ_4K) + sl_start;
-
-			if (sl_end > NUM_SL_PTE)
-				sl_end = NUM_SL_PTE;
-
-			for (i = sl_start; i < sl_end; i++) {
-				if (sl_table[i] != 0) {
-					pr_err("%08x - %08x already mapped\n",
-						va, va + SZ_4K);
-					return -EBUSY;
-				}
-				offset += SZ_4K;
-				va += SZ_4K;
-			}
-
-
-			sl_start = 0;
-		} else {
-			if (*fl_pte != 0) {
-				pr_err("%08x - %08x already mapped\n",
-				       va, va + SZ_1M);
-				return -EBUSY;
-			}
-			va += SZ_1M;
-			offset += SZ_1M;
-			sl_start = 0;
-		}
-		fl_pte++;
+	if (align == SZ_4K) {
+		return  IS_ALIGNED(va, align) && IS_ALIGNED(pa, align)
+			&& (len >= align);
+	} else {
+		return 0;
 	}
-	return 0;
 }
-
+#else
 static inline int is_fully_aligned(unsigned int va, phys_addr_t pa, size_t len,
 				   int align)
 {
@@ -415,10 +381,6 @@ int msm_iommu_pagetable_map_range(struct msm_iommu_pt *pt, unsigned int va,
 	fl_pte = pt->fl_table + fl_offset;	/* int pointers, 4 bytes */
 	fl_pte_shadow = pt->fl_table_shadow + fl_offset;
 	pa = get_phys_addr(sg);
-
-	ret = check_range(pt->fl_table, va, len);
-	if (ret)
-		goto fail;
 
 	while (offset < len) {
 		chunk_size = SZ_4K;
