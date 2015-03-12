@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -512,7 +512,7 @@ static inline s32 is_fully_aligned(u32 va, phys_addr_t pa, size_t len,
 	return  IS_ALIGNED(va | pa, align) && (len >= align);
 }
 
-s32 msm_iommu_pagetable_map_range(struct msm_iommu_pt *pt, u32 va,
+s32 msm_iommu_pagetable_map_range(struct msm_iommu_pt *pt, unsigned long va,
 		       struct scatterlist *sg, u32 len, s32 prot)
 {
 	phys_addr_t pa;
