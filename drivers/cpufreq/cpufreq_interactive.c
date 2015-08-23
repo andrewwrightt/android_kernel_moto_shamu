@@ -405,6 +405,29 @@ static void cpufreq_interactive_timer(unsigned long data)
 		new_freq = pcpu->policy->cpuinfo.min_freq;
 	} else {
 		new_freq = choose_freq(pcpu, loadadjfreq);
+		if (new_freq > hispeed_freq && pcpu->target_freq < hispeed_freq)
+			new_freq = hispeed_freq;
+
+		if (sync_freq && new_freq < sync_freq) {
+
+			max_load = 0;
+			max_freq = 0;
+
+			for_each_online_cpu(i) {
+				picpu = &per_cpu(cpuinfo, i);
+
+				if (i == data || picpu->prev_load <
+						up_threshold_any_cpu_load)
+					continue;
+
+				max_load = max(max_load, picpu->prev_load);
+				max_freq = max(max_freq, picpu->target_freq);
+			}
+
+			if (max_freq > up_threshold_any_cpu_freq &&
+				max_load >= up_threshold_any_cpu_load)
+				new_freq = sync_freq;
+		}
 	}
 
 	if (pcpu->policy->cur >= hispeed_freq &&
