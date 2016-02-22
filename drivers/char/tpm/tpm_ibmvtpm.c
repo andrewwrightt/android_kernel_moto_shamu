@@ -525,7 +525,7 @@ static void ibmvtpm_crq_process(struct ibmvtpm_crq *crq,
 			}
 			ibmvtpm->rtce_size = crq->len;
 			ibmvtpm->rtce_buf = kmalloc(ibmvtpm->rtce_size,
-						    GFP_KERNEL);
+						    GFP_ATOMIC);
 			if (!ibmvtpm->rtce_buf) {
 				dev_err(ibmvtpm->dev, "Failed to allocate memory for rtce buffer\n");
 				return;
