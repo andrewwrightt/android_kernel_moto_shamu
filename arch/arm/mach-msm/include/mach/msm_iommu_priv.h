@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -21,17 +21,31 @@
  * unaligned_fl_table: Original address of memory for the page table.
  * fl_table is manually aligned (as per spec) but we need the original address
  * to free the table.
+ * fl_table_shadow: This is "copy" of the fl_table with some differences.
+ * It stores the same information as fl_table except that instead of storing
+ * second level page table address + page table entry descriptor bits it
+ * stores the second level page table address and the number of used second
+ * level page tables entries. This is used to check whether we need to free
+ * the second level page table which allows us to also free the second level
+ * page table after doing a TLB invalidate which should catch bugs with
+ * clients trying to unmap an address that is being used.
+ * fl_table_shadow will use the lower 9 bits for the use count and the upper
+ * bits for the second level page table address.
+ * sl_table_shadow uses the same concept as fl_table_shadow but for LPAE 2nd
+ * level page tables.
  */
 #ifdef CONFIG_IOMMU_LPAE
 struct msm_iommu_pt {
 	u64 *fl_table;
+	u64 **sl_table_shadow;
 	int redirect;
 	u64 *unaligned_fl_table;
 };
 #else
 struct msm_iommu_pt {
-	unsigned long *fl_table;
+	u32 *fl_table;
 	int redirect;
+	u32 *fl_table_shadow;
 };
 #endif
 /**
