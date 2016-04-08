@@ -2159,6 +2159,9 @@ static void finish_task_switch(struct rq *rq, struct task_struct *prev)
 	if (mm)
 		mmdrop(mm);
 	if (unlikely(prev_state == TASK_DEAD)) {
+		if (prev->sched_class->task_dead)
+			prev->sched_class->task_dead(prev);
+
 		/*
 		 * Remove function-return probe instances associated with this
 		 * task and put them back on the free list.
@@ -5012,7 +5015,9 @@ SYSCALL_DEFINE2(sched_rr_get_interval, pid_t, pid,
 		goto out_unlock;
 
 	rq = task_rq_lock(p, &flags);
-	time_slice = p->sched_class->get_rr_interval(rq, p);
+	time_slice = 0;
+	if (p->sched_class->get_rr_interval)
+		time_slice = p->sched_class->get_rr_interval(rq, p);
 	task_rq_unlock(rq, p, &flags);
 
 	rcu_read_unlock();
@@ -5361,6 +5366,13 @@ static void migrate_tasks(unsigned int dead_cpu)
 	 * done here.
 	 */
 	rq->stop = NULL;
+
+	/*
+	 * put_prev_task() and pick_next_task() sched
+	 * class method both need to have an up-to-date
+	 * value of rq->clock[_task]
+	 */
+	update_rq_clock(rq);
 
 	for ( ; ; ) {
 		/*
